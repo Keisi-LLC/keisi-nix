@@ -2,7 +2,7 @@
   description = "keisi pattern for Go web apps on NixOS: managed static-binary app boxes + a git-push dev/prod workflow.";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };

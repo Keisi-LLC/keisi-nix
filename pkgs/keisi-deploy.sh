@@ -45,12 +45,26 @@ rollback() {
   echo "keisi-deploy: $1 — rolling back" >&2
   if [ -n "$prev" ]; then
     ln -sfn "$prev" "$base/current"
+    # A crash-looping bad release trips systemd's start-rate limit within
+    # seconds (Restart=always); without reset-failed the restart below would
+    # be refused ("start request repeated too quickly") and the app stays down.
+    systemctl reset-failed "app@$app" >/dev/null 2>&1 || true
     systemctl restart "app@$app" || true
+    # Confirm the rollback actually came back up.
+    for _ in $(seq 1 20); do
+      if curl -sf --unix-socket "$sock" http://localhost/healthz >/dev/null 2>&1; then
+        echo "keisi-deploy: rollback healthy (previous release restored)" >&2
+        exit 1
+      fi
+      sleep 1
+    done
+    echo "keisi-deploy: WARNING rollback did NOT come healthy — check journalctl -u app@$app" >&2
   fi
   exit 1
 }
 
 systemctl enable "app@$app" >/dev/null 2>&1 || true
+systemctl reset-failed "app@$app" >/dev/null 2>&1 || true
 # The unit's ExecStartPost already health-gates; a failed start returns non-zero.
 systemctl restart "app@$app" || rollback "restart/health failed"
 
