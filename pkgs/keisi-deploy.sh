@@ -63,7 +63,6 @@ rollback() {
   exit 1
 }
 
-systemctl enable "app@$app" >/dev/null 2>&1 || true
 systemctl reset-failed "app@$app" >/dev/null 2>&1 || true
 # The unit's ExecStartPost already health-gates; a failed start returns non-zero.
 systemctl restart "app@$app" || rollback "restart/health failed"

@@ -75,6 +75,25 @@ in
       # `keisi-deploy` on PATH; deploy user runs it via (passwordless) sudo.
       environment.systemPackages = [ keisi-deploy pkgs.sqlite ];
 
+      # Start every deployed app at boot. Template instances (app@<name>)
+      # can't be persistently `systemctl enable`d without an [Install]
+      # section, and NixOS regenerates /etc/systemd/system on every switch —
+      # so instead, anything with a release under /opt/apps gets started here.
+      systemd.services.keisi-apps-boot = {
+        description = "start all deployed keisi apps";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "network-online.target" ];
+        wants = [ "network-online.target" ];
+        serviceConfig = { Type = "oneshot"; RemainAfterExit = true; };
+        script = ''
+          for d in /opt/apps/*/; do
+            app="$(basename "$d")"
+            [ -e "$d/current" ] || continue
+            ${pkgs.systemd}/bin/systemctl start "app@$app.service" --no-block
+          done
+        '';
+      };
+
       # ── The templated per-app unit (enabled per instance by keisi-deploy) ───
       systemd.services."app@" = {
         description = "keisi app %i";
