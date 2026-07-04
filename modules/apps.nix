@@ -84,7 +84,19 @@ in
           ExecStart = "/opt/apps/%i/current";
           # Blocks "started" until the socket answers /healthz → a broken
           # binary fails to activate and keisi-deploy rolls back.
-          ExecStartPost = "${pkgs.curl}/bin/curl -sf --retry 20 --retry-delay 1 --retry-connrefused --unix-socket /run/apps/%i/app.sock http://localhost/healthz";
+          # A wait-LOOP, not curl --retry: before the app finishes booting
+          # (e.g. first-boot migrations) the socket file doesn't EXIST yet —
+          # that's ENOENT, which --retry-connrefused does NOT retry, so a bare
+          # curl fails instantly and systemd kills the app mid-migration.
+          ExecStartPost = "${pkgs.writeShellScript "keisi-health-gate" ''
+            sock="/run/apps/$1/app.sock"
+            for _ in $(seq 1 60); do
+              ${pkgs.curl}/bin/curl -sf --unix-socket "$sock" http://localhost/healthz >/dev/null 2>&1 && exit 0
+              sleep 1
+            done
+            echo "keisi-health-gate: $sock never answered /healthz" >&2
+            exit 1
+          ''} %i";
           User = "apps";
           Group = "apps";
           UMask = "0007"; # socket is group-accessible so Caddy can connect
