@@ -119,6 +119,10 @@ in
           User = "apps";
           Group = "apps";
           UMask = "0007"; # socket is group-accessible so Caddy can connect
+          # Run from the app's state dir so relative paths (an app's "data"
+          # dir, a default sqlite filename) land somewhere writable instead
+          # of / (read-only under ProtectSystem=strict).
+          WorkingDirectory = "/var/lib/apps/%i";
           EnvironmentFile = "-/etc/apps/%i.env"; # optional secrets
           Environment = [
             "APP_ADDR=/run/apps/%i/app.sock"
