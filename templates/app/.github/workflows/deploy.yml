@@ -1,10 +1,16 @@
 name: deploy
 
-# push to main → dev (keisi.co) ; push tag v* → prod (approval-gated).
+# Deploys ONLY on a v* tag, and tags are dates — vYYYY.MM.DD
+# (keisi-handbook GITOPS.md §Release tags). Push-to-main runs CI only.
+#
+# A manual dispatch resolves the `dev:` target, and since 2026-08-17 no repo
+# in the fleet carries one — the keisi box hosts only promoted apps and dev
+# lives on Forge. So a dispatch fails with "no 'dev' target", by design: that
+# error is what keeps un-promoted apps off the public box.
 # Reads deploy/targets.yml to pick the target for the trigger.
 on:
+  workflow_dispatch:
   push:
-    branches: [ main ]
     tags: [ 'v*' ]
 
 concurrency:

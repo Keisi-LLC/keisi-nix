@@ -1,17 +1,19 @@
-# Where this app deploys. One mechanism (keisi-deploy), two targets.
+# Where this app deploys: nowhere, until it is promoted. Push-to-main runs CI
+# only; day-to-day dev is `forge-dev <slug>` on Forge (tailnet-only).
 #
-#   push to main  → dev   (the shared keisi.co box; every app has this)
-#   push tag v*   → prod  (this app's dedicated box; added on promotion)
+# NOTE: `app` is the unit (app@<slug>), socket (/run/apps/<slug>/app.sock) and
+# data dir (/var/lib/apps/<slug>) once this app IS promoted.
+app: keisi-app # EDIT: your app slug
+
+# No `dev:` target on purpose. Since 2026-08-17 the keisi box hosts ONLY
+# promoted apps, so there is no non-prod destination to deploy to — dev lives
+# on Forge. A manual workflow dispatch therefore fails loudly ("no 'dev'
+# target") rather than putting an un-promoted app on the public box.
 #
-# `ssh` is the deploy user@host the CI ships to. `url` is the public health URL
-# CI verifies after. Leave `prod` commented out until the app is promoted.
-
-app: kirkpatrick            # TODO(you): the app slug (also its socket/DB/unit name)
-
-dev:
-  ssh: deploy@keisi.co      # TODO(you): the shared box (IP or DNS)
-  url: https://kirkpatrick.keisi.co
-
-# prod:                     # uncomment on promotion (also create the box + prod secrets)
-#   ssh: deploy@kirkpatrick.app
-#   url: https://kirkpatrick.app
+# On promotion, uncomment prod: and ship with a DATE tag —
+# `git tag "v$(date +%Y.%m.%d)" && git push --tags`. Tags are vYYYY.MM.DD,
+# not semver (keisi-handbook GITOPS.md §Release tags). HaHRegistration's
+# targets.yml is the worked example.
+# prod:
+#   ssh: deploy@<box>
+#   url: https://<domain>

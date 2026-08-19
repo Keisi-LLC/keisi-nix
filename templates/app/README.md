@@ -9,7 +9,7 @@ repo stays **plain Go** — no per-repo Nix. The box is what's declarative.
 |---|---|
 | `deploy/targets.yml` | where this app deploys (dev = keisi.co, prod = own box) |
 | `.github/workflows/ci.yml` | PR/main gate: templ-diff, vet, test, build |
-| `.github/workflows/deploy.yml` | main → dev, tag `v*` → prod (approval-gated), via `keisi-deploy` |
+| `.github/workflows/deploy.yml` | tag `vYYYY.MM.DD` → prod via `keisi-deploy`; main runs CI only |
 
 ## The one app-code requirement: listen on `APP_ADDR`, unix or TCP
 
@@ -42,6 +42,8 @@ STACK.md.) Secrets, if any, come from `/etc/apps/<app>.env` on the box, not this
 
 ## Daily loop
 
-- Merge to `main` → live at `<app>.keisi.co` in ~a minute.
-- Tag `vX.Y.Z` and push → approve → live on the prod box. (Only once `prod:` is
-  uncommented in `targets.yml` and the box exists — see the kit's GITOPS.md.)
+- Merge to `main` → CI only. Nothing deploys; iterate with `forge-dev <slug>`
+  on Forge, tailnet-only.
+- `git tag "v$(date +%Y.%m.%d)" && git push --tags` → live on the prod box.
+  (Only once `prod:` is uncommented in `targets.yml` and the box exists — see
+  the kit's GITOPS.md. Tags are dates, not semver.)
