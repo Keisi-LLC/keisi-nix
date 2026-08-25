@@ -26,6 +26,6 @@
   };
 
   # Deploy a box (rarely — only when its config changes):
-  #   nixos-rebuild switch --flake .#keisi --target-host deploy@<ip> --use-remote-sudo
+  #   nixos-rebuild switch --flake .#keisi --target-host deploy@<ip> --elevate=sudo
   # App code deploys go through keisi-deploy from each app's CI, not here.
 }

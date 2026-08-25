@@ -39,7 +39,7 @@ Caddy:  *.keisi.co ─► reverse_proxy unix//run/apps/{subdomain}/app.sock   (n
 ```
 
 Boxes themselves change rarely; when they do:
-`nixos-rebuild switch --flake .#keisi --target-host deploy@<ip> --use-remote-sudo`.
+`nixos-rebuild switch --flake .#keisi --target-host deploy@<ip> --elevate=sudo`.
 
 ## The on-box contract (what `apps.nix` and `keisi-deploy` agree on)
 

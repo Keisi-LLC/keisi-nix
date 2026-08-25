@@ -7,7 +7,7 @@
 #   }
 #
 # Returns a nixosSystem. Deploy the box with plain nixos-rebuild:
-#   nixos-rebuild switch --flake .#keisi --target-host deploy@<ip> --use-remote-sudo
+#   nixos-rebuild switch --flake .#keisi --target-host deploy@<ip> --elevate=sudo
 # App deploys (the fast path) go through keisi-deploy, not this.
 
 { self, nixpkgs, sops-nix }:
