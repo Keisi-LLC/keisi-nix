@@ -117,6 +117,15 @@ in
       # ── The templated per-app unit (enabled per instance by keisi-deploy) ───
       systemd.services."app@" = {
         description = "keisi app %i";
+
+        # Only start once keisi-deploy has actually dropped a release. A
+        # failed condition is "skipped", not "failed", so activation stays
+        # green for an app that is configured but not yet deployed —
+        # env file present, binary absent. Without this, anything that asks
+        # systemd to start app@<name> (sops restartUnits on the app's env
+        # secret, say) turns a first-time setup into a failed rebuild with
+        # ExecStart=203/EXEC.
+        unitConfig.ConditionPathExists = "/opt/apps/%i/current";
         after = [ "network-online.target" ];
         wants = [ "network-online.target" ];
         serviceConfig = {
