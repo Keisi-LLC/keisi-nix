@@ -53,7 +53,27 @@ in
       type = types.attrsOf types.str;
       default = { };
       example = { kirkpatrick = "kirkpatrick.app"; };
-      description = "Dedicated/prod box: map <app> → its real FQDN. Each gets a normal auto-TLS vhost to that app's socket.";
+      description = "Dedicated/prod box: map <app> → its real FQDN. Each gets an auto-TLS vhost to that app's socket.";
+    };
+
+    domainsDnsChallenge = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Issue the `domains` certificates over DNS-01 instead of Caddy's
+        default challenges.
+
+        Needed when a domain sits behind a proxy (Cloudflare "orange cloud").
+        A proxy terminates TLS, so TLS-ALPN-01 never reaches the origin;
+        HTTP-01 may work, but depends on proxy settings outside this repo and
+        fails at RENEWAL months later rather than at issuance. DNS-01 proves
+        control by writing a TXT record, so it is indifferent to how traffic
+        reaches the origin — or whether it reaches it at all.
+
+        Requires dnsProvider and a CADDY_DNS_TOKEN whose scope covers EVERY
+        zone in `domains`. A token missing one zone breaks that domain's
+        renewal silently, ~60 days later.
+      '';
     };
   };
 
@@ -177,11 +197,22 @@ in
 
     # ── Dedicated/prod box: a normal auto-TLS vhost per real domain ────────
     (mkIf (cfg.domains != { }) {
+      assertions = [{
+        assertion = !cfg.domainsDnsChallenge || cfg.dnsProvider != null;
+        message = "services.keisi.domainsDnsChallenge requires dnsProvider (and a CADDY_DNS_TOKEN covering every zone in services.keisi.domains).";
+      }];
       services.caddy = {
         enable = true;
         virtualHosts = mapAttrs' (app: domain:
           nameValuePair domain {
-            extraConfig = "reverse_proxy unix//run/apps/${app}/app.sock";
+            extraConfig = ''
+              ${optionalString cfg.domainsDnsChallenge ''
+                tls {
+                  dns ${cfg.dnsProvider} {env.CADDY_DNS_TOKEN}
+                }
+              ''}
+              reverse_proxy unix//run/apps/${app}/app.sock
+            '';
           }
         ) cfg.domains;
       };
