@@ -79,11 +79,11 @@ in
     sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
     # A couple of quality-of-life tools for the operator on the box.
-    # NOTE: litestream is deliberately NOT here — nixpkgs marks 0.3.13 insecure
-    # (CVE-2024-41254) and dev boxes don't replicate. Prod hosts that enable
-    # services.litestream must also set:
-    #   nixpkgs.config.permittedInsecurePackages = [ "litestream-0.3.13" ];
-    # (an explicit, per-host decision at promotion time).
+    # NOTE: litestream is deliberately NOT here — dev boxes don't replicate,
+    # so enabling services.litestream stays an explicit per-host decision at
+    # promotion time. It no longer needs a permittedInsecurePackages
+    # exemption: that was for 0.3.13 (CVE-2024-41254), and nixpkgs now
+    # carries 0.5.11.
     environment.systemPackages = with pkgs; [ sqlite curl ];
 
     system.stateVersion = mkDefault "24.11";
