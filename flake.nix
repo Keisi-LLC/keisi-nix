@@ -16,7 +16,10 @@
       # ── Reusable NixOS pieces (imported by box configs) ──────────────────
       nixosModules = {
         base = import ./modules/base.nix; # ssh/firewall/deploy-user/gc/sops age
-        apps = import ./modules/apps.nix; # the managed app runner (app@ + Caddy)
+        # the managed app runner (app@ + Caddy); imports postgres.nix and
+        # postgres-backup.nix, which do nothing until an app is listed in
+        # services.keisi.postgres.databases
+        apps = import ./modules/apps.nix;
       };
 
       # `keisi-nix.lib.mkHost { system; hostName; modules; }` → a nixosSystem.

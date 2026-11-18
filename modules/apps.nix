@@ -9,13 +9,24 @@
 #
 #   shared dev/staging box:  services.keisi = { env = "staging"; wildcardDomain = "keisi.co"; dnsProvider = "digitalocean"; };
 #   dedicated prod box:      services.keisi = { env = "prod"; domains.kirkpatrick = "kirkpatrick.app"; };
+#   …whose app uses PostgreSQL: add postgres.databases = [ "kirkpatrick" ];  (postgres.nix)
 
 let
   inherit (lib) mkOption mkEnableOption types mkIf mkMerge mapAttrs' nameValuePair optionalAttrs optionalString;
   cfg = config.services.keisi;
-  keisi-deploy = pkgs.callPackage ../pkgs/keisi-deploy.nix { };
+  keisi-deploy = pkgs.callPackage ../pkgs/keisi-deploy.nix {
+    # pg_dump for the pre-swap snapshot of a PostgreSQL app: the server's own
+    # version, and only on a box that runs PostgreSQL at all — a SQLite-only
+    # box's keisi-deploy gains no dependency.
+    postgresqlPackage =
+      if cfg.postgres.databases != [ ] then config.services.postgresql.finalPackage else null;
+  };
 in
 {
+  # PostgreSQL for apps that list themselves in services.keisi.postgres
+  # .databases, and its backups. Both are inert until then.
+  imports = [ ./postgres.nix ./postgres-backup.nix ];
+
   options.services.keisi = {
     enable = mkEnableOption "the keisi managed app runner";
 
