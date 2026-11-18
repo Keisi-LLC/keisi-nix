@@ -6,6 +6,8 @@
 #   /opt/apps/<app>/releases/<ts>/<app>   timestamped releases
 #   /opt/apps/<app>/current               symlink → the live release
 #   /var/lib/apps/<app>/<app>.db          SQLite DB (+ backups/)
+#   PostgreSQL database <app>             instead, for apps listed in
+#                                         services.keisi.postgres.databases
 #   /run/apps/<app>/app.sock              the unix socket Caddy proxies to
 #   /etc/apps/<app>.env                   optional secrets (EnvironmentFile)
 #   systemd unit: app@<app>.service       templated, one per app
@@ -36,6 +38,41 @@ if [ -f "$data/$app.db" ]; then
   sqlite3 "$data/$app.db" ".backup '$data/backups/$app-$ts.db'" || true
   # shellcheck disable=SC2012
   ls -1t "$data/backups"/*.db 2>/dev/null | tail -n +"$((keep + 1))" | xargs -r rm -f
+fi
+
+# The same pre-swap snapshot for an app whose database is PostgreSQL. Without
+# this branch such an app has no <app>.db, so the block above skips it and it
+# deploys with no snapshot at all — and nothing says so.
+#
+# A database named after the app is the box contract (services.keisi.postgres
+# .databases). pg_dump's custom format is consistent while the app is writing
+# and restores with pg_restore. Both tools run as the postgres superuser over
+# the local socket, because root has no database role of its own; from /, so
+# they do not complain about a working directory postgres cannot read.
+as_postgres() { (cd / && runuser -u postgres -- "$@"); }
+
+if command -v pg_dump >/dev/null 2>&1; then
+  if dbs="$(as_postgres psql -XAtc 'SELECT datname FROM pg_database' postgres 2>/dev/null)"; then
+    if grep -qxF -- "$app" <<<"$dbs"; then
+      install -d -o apps -g apps "$data/backups"
+      dump="$data/backups/$app-$ts.dump"
+      # Written under another name and renamed only when complete, so a dump
+      # that died halfway never sits in backups/ looking like a good one.
+      rm -f "$data/backups"/*.dump.partial
+      if as_postgres pg_dump -Fc -d "$app" >"$dump.partial"; then
+        mv "$dump.partial" "$dump"
+      else
+        rm -f "$dump.partial"
+        echo "keisi-deploy: WARNING pg_dump of $app failed — deploying WITHOUT a pre-swap snapshot" >&2
+      fi
+      # shellcheck disable=SC2012
+      ls -1t "$data/backups"/*.dump 2>/dev/null | tail -n +"$((keep + 1))" | xargs -r rm -f
+    fi
+  else
+    # PostgreSQL is installed but did not answer, so whether this app has a
+    # database is unknown. Say so: staying quiet here is the silent gap.
+    echo "keisi-deploy: WARNING could not ask PostgreSQL whether $app has a database — no pre-swap snapshot taken" >&2
+  fi
 fi
 
 prev="$(readlink "$base/current" 2>/dev/null || true)"
