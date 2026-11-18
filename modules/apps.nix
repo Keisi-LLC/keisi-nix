@@ -9,6 +9,7 @@
 #
 #   shared dev/staging box:  services.keisi = { env = "staging"; wildcardDomain = "keisi.co"; dnsProvider = "digitalocean"; };
 #   dedicated prod box:      services.keisi = { env = "prod"; domains.kirkpatrick = "kirkpatrick.app"; };
+#   …whose app uses PostgreSQL: add postgres.databases = [ "kirkpatrick" ];  (postgres.nix)
 
 let
   inherit (lib) mkOption mkEnableOption types mkIf mkMerge mapAttrs' nameValuePair optionalAttrs optionalString;
@@ -16,6 +17,10 @@ let
   keisi-deploy = pkgs.callPackage ../pkgs/keisi-deploy.nix { };
 in
 {
+  # PostgreSQL for apps that list themselves in services.keisi.postgres
+  # .databases, and its backups. Both are inert until then.
+  imports = [ ./postgres.nix ./postgres-backup.nix ];
+
   options.services.keisi = {
     enable = mkEnableOption "the keisi managed app runner";
 
